@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # feedergrabber.py
-# 20130420
+# 20130421, works.
 # David Prager Branner
 
 import re
@@ -11,12 +11,14 @@ import bs4
 import feedparser
 import time
 import datetime
+'''Retrieves the links and titles of recent posts from blog feeds.'''
 
 http_pattern = re.compile('^https?://')
 reference_pattern = re.compile('^#')
 illformed_slash_pattern = re.compile('/\.*(\.|/)+/*')
 
 def retrieve_file_contents(url):
+    '''Retrieve file contents from a given URL and log any errors.'''
     try:
         file_contents = feedparser.parse(url) 
         errors = None
@@ -32,18 +34,6 @@ def parse_domain(url):
     ParseResult = urllib.parse.urlparse(url)
     return ParseResult.scheme, ParseResult.netloc, ParseResult.path
 
-def add_domain_to_any_relative_URI(scheme, domain, link, title,
-            post_links_and_titles):
-    '''If link begins with anything other than http://, https://, or #, add http:// to it.  Test with http and #, perh also http:// and https, all at start of string. Perhaps also with these not at start?
-    '''
-    if not ((re.search(http_pattern, str(link)) or
-            re.search(reference_pattern, str(link)))):
-        link = re.sub('^', scheme+'://'+domain+'/', str(link))
-    if not title:
-        title = 'No title found.'
-    post_links_and_titles.append((link, title))
-    return post_links_and_titles
-
 def postprocess(link):
     '''Ensures that there is no combination of . or /
     following the initial :// . Test using a range of //, /./, /.../., etc.  '''
@@ -52,35 +42,32 @@ def postprocess(link):
     return scheme_name + '://' + domain + remainder
 
 def check_wellformed(url):
-    # ggg this still needs to be written)
-    # ggg Should look at urllib.parse.urlparse before proceeding.
+    '''Fix some common minor problems in URL formatting.'''
     # remove any spaces
     url = url.replace(' ', '')
     # make all lower case
     url = url.lower()
-    # fix "htp"
-    # if no scheme name at start, place one at start
-    # if ill-formed delimiter (:/ or //), replace
-    # if no ://, then check for http or http at start and place delimiter next
-    #
     return url
 
-def feedergrabber(url=None, select_strings=None):
+def feedergrabber(url=None):
+    '''The main function of the module.'''
+    # Initial checks on the URL.
     if not url:
         return None, ['Empty URL.']
     url = check_wellformed(url) # ggg should we include parse_domain here?
     scheme, domain, path = parse_domain(url)
     if not (scheme and domain):
         return None, ['URL malformed: ' + scheme + domain + path]
-    # Initialize some variables
+    # Initialize some variables.
     errors = []
     file_contents = ''
     post_links_and_titles = []
     post_date = ''
-    # Get file contents
+    # Get file contents.
     file_contents, _ = retrieve_file_contents(url)
-    # Gather links, titles, and dates
+    # Gather links, titles, and dates.
     for i in file_contents.entries:
+        # Link
         try:
             link = i.link
         except AttributeError as e:
@@ -88,6 +75,13 @@ def feedergrabber(url=None, select_strings=None):
                     ': A link was unexpectedly not returned by feedparse.'])
             continue
         link = postprocess(link)
+        # Title
+        try:
+            title = i.title
+        except AttributeError as e:
+            errors.append(([url + 
+                    ':A title was unexpectedly not returned by feedparse.'])
+        # Date
         if i.updated_parsed:
             post_date = i.updated_parsed
         elif i.published_parsed:
@@ -96,8 +90,9 @@ def feedergrabber(url=None, select_strings=None):
             post_date = datetime.datetime.fromtimestamp(time.mktime(post_date))
         else:
             post_date = datetime.datetime.now()
-        post_links_and_titles.append((link, i.title, post_date))
+        # Append
+        post_links_and_titles.append((link, title, post_date))
     if not post_links_and_titles:
         post_links_and_titles = None
-        errors.append(url + ': Parsing methods not successful.')
+        errors.append([url + ': Parsing methods not successful.'])
     return post_links_and_titles, errors
