@@ -79,7 +79,7 @@ def feedergrabber(url=None):
         try:
             title = i.title
         except AttributeError as e:
-            errors.append(([url +
+            errors.append([url +
                     ':A title was unexpectedly not returned by feedparse.'])
         # Date
         if i.updated_parsed:
