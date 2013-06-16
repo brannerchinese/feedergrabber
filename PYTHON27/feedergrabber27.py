@@ -1,6 +1,8 @@
 #!/usr/bin/python2,7
 # feedergrabber27.py
-# 20130421, works.
+# 20130615, works. See long comment about postprocess; needs fixing with
+#    link = u'http://organicdonut.com/?p=224'
+# as test.
 # David Prager Branner
 
 from __future__ import print_function
@@ -74,7 +76,10 @@ def feedergrabber(url=None):
             errors.append([url +
                     ': A link was unexpectedly not returned by feedparse.'])
             continue
-        link = postprocess(link)
+# Have temporarily commented out this call to postprocess;
+# its call to parse_domain strips everything after ParseResult.path,
+# eliminating a necessary query string. Fix this later. 20130615.
+#        link = postprocess(link)
         # Title
         try:
             title = i.title
